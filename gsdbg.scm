@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-5-6 v1.00
+;; 2019-5-7 v1.01
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -48,7 +48,8 @@
     *gsdbg-ret-val*))
 
 ;; get local variable's value (limited)
-;;   name - it must be specified by local-vars argument of gsdbg procedure.
+;;   name - local variable name
+;;          it must be specified by local-vars argument of gsdbg procedure.
 ;;   e.g. (getlv x)
 (define-syntax getlv
   (er-macro-transformer
@@ -106,7 +107,7 @@
 
 (select-module gauche.interactive.toplevel)
 
-;; add toplevel command
+;; add toplevel commands
 ;; ,continue
 (define-toplevel-command (continue c) :read
   "\
@@ -115,6 +116,7 @@
     (match args
       [() (eof-object)]
       [_ (usage)])))
+
 ;; ,go
 (define-toplevel-command (go) :read
   "\
@@ -124,6 +126,7 @@
       [() (with-module gsdbg (set! *gsdbg-disabled* #t))
        (eof-object)]
       [_ (usage)])))
+
 ;; ,quit
 (define-toplevel-command (quit) :read
   "\
@@ -132,6 +135,7 @@
     (match args
       [() (exit)]
       [_ (usage)])))
+
 ;; ,backtrace
 (define-toplevel-command (backtrace bt) :read
   "\
@@ -141,6 +145,7 @@
       [() (%vm-show-stack-trace (vm-get-stack-trace-lite))
        `(,(rename 'values))]
       [_ (usage)])))
+
 ;; ,selmod [module]
 (define-toplevel-command (selmod sm) :read
   " [module]\
@@ -150,6 +155,7 @@
       [()    `(,(rename 'select-module) user)]
       [(mod) `(,(rename 'select-module) ,mod)]
       [_ (usage)])))
+
 ;; ,locvar [name1 name2 ...]
 (define-toplevel-command (locvar lv) :read
   " [name1 name2 ...]\
@@ -160,6 +166,7 @@
        (with-module gsdbg (%disp-local-vars syms))
        `(,(rename 'values))]
       [_ (usage)])))
+
 ;; ,ret value
 (define-toplevel-command (ret) :read
   " value\
@@ -173,8 +180,9 @@
        `(,(rename 'values))]
       [_ (usage)])))
 
-;; customize help
-;;   display debugger commands after standard commands.
+;; ,help [command]
+;;   overwrite original ,help command.
+;;   it displays debugger commands after standard commands.
 (define-toplevel-command (help h) :read
   " [command]\
  \nShow the help message of the command.\
