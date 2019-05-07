@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-5-7 v1.01
+;; 2019-5-8 v1.02
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -52,18 +52,14 @@
 ;;          it must be specified by local-vars argument of gsdbg procedure.
 ;;   e.g. (getlv x)
 (define-syntax getlv
-  (er-macro-transformer
-   (^[f r c]
-     (match f
-       [(_ sym)
-        (quasirename r
-          `(begin
-             (unless (symbol? ',sym)
-               (errorf "symbol required, but got ~s" ',sym))
-             (if-let1 val (hash-table-get *local-vars-table* ',sym #f)
-               (car val)
-               (errorf "local variable ~s is not found." ',sym))))]
-       [_ (error "malformed getlv:" f)]))))
+  (syntax-rules ()
+    [(_ sym)
+     (begin
+       (unless (symbol? 'sym)
+         (errorf "symbol required, but got ~s" 'sym))
+       (if-let1 val (hash-table-get *local-vars-table* 'sym #f)
+         (car val)
+         (errorf "local variable ~s is not found." 'sym)))]))
 
 
 ;; == private ==
