@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-5-8 v1.02
+;; 2019-10-30 v1.03
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -24,6 +24,7 @@
 
 (define *gsdbg-disabled*   #f)
 (define *gsdbg-ret-val*    #f)
+(define *gsdbg-saved-mod*  #f)
 (define *local-vars-table* #f)
 
 
@@ -42,9 +43,11 @@
 ;;   e.g. (gsdbg "proc1" `((x ,x) (y ,y)))
 (define (gsdbg :optional (prompt-add #f) (local-vars #f))
   (unless *gsdbg-disabled*
-    (set! *gsdbg-ret-val* (undefined))
+    (set! *gsdbg-ret-val*   (undefined))
+    (set! *gsdbg-saved-mod* ((with-module gauche.internal vm-current-module)))
     (%make-local-vars-table local-vars)
     (read-eval-print-loop #f #f #f (%make-prompter prompt-add))
+    (%restore-mod)
     *gsdbg-ret-val*))
 
 ;; get local variable's value (limited)
@@ -98,6 +101,11 @@
         (print sym " = " (car val))
         (print "local variable " sym " is not found.")))))
 
+;; restore saved module
+(define (%restore-mod)
+  (eval `(select-module ,*gsdbg-saved-mod*)
+        (with-module gauche.internal vm-current-module)))
+
 
 ;; == gauche.interactive.toplevel ==
 
@@ -119,7 +127,8 @@
  \n<debugger> Go without break."
   (^[args]
     (match args
-      [() (with-module gsdbg (set! *gsdbg-disabled* #t))
+      [()
+       (with-module gsdbg (set! *gsdbg-disabled* #t))
        (eof-object)]
       [_ (usage)])))
 
@@ -129,7 +138,9 @@
  \n<debugger> Quit program."
   (^[args]
     (match args
-      [() (exit)]
+      [()
+       (with-module gsdbg (%restore-mod))
+       (exit)]
       [_ (usage)])))
 
 ;; ,backtrace
@@ -138,7 +149,8 @@
  \n<debugger> Display backtrace."
   (^[args]
     (match args
-      [() (%vm-show-stack-trace (vm-get-stack-trace-lite))
+      [()
+       (%vm-show-stack-trace (vm-get-stack-trace-lite))
        `(,(rename 'values))]
       [_ (usage)])))
 
