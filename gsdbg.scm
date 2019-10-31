@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-10-31 v1.06
+;; 2019-10-31 v1.07
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -39,13 +39,14 @@
 ;;                these variables can be displayed by ,locvar command.
 ;;                NB: for now, debugger can't recognize local environment,
 ;;                so that user should specify this argument explicitly.
-;;   e.g. (gsdbg "proc1" `((x ,x) (y ,y)))
-(define (gsdbg :optional (prompt-add #f) (local-vars #f))
+;;   ret-val    - return value of debugger
+;;   e.g. (gsdbg "proc1" `((x ,x) (y ,y)) #f)
+(define (gsdbg :optional (prompt-add #f) (local-vars #f) (ret-val #f))
+  (set! *gsdbg-ret-val* ret-val)
   (unless *gsdbg-disabled*
-    (set! *gsdbg-ret-val* (undefined))
     (%make-local-vars-table local-vars)
-    (read-eval-print-loop #f #f #f (%make-prompter prompt-add))
-    *gsdbg-ret-val*))
+    (read-eval-print-loop #f #f #f (%make-prompter prompt-add)))
+  *gsdbg-ret-val*)
 
 ;; get local variable's value (limited)
 ;;   name - local variable name
@@ -126,11 +127,12 @@
 
 ;; ,quit
 (define-toplevel-command (quit) :read
-  "\
+  " [code]\
  \n<debugger> Quit program."
   (^[args]
     (match args
-      [() (exit)]
+      [(code) (exit (eval code ((with-module gauche.internal vm-current-module))))]
+      [()     (exit)]
       [_ (usage)])))
 
 ;; ,backtrace
@@ -186,7 +188,7 @@
       [(val)
        ($ with-module gsdbg
           (set! *gsdbg-ret-val*
-                (eval val (with-module gauche.internal vm-current-module))))
+                (eval val ((with-module gauche.internal vm-current-module)))))
        `(,(rename 'values))]
       [_ (usage)])))
 
