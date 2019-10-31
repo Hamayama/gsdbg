@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-10-31 v1.04
+;; 2019-10-31 v1.05
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -176,10 +176,13 @@
 
 ;; ,ret value
 (define-toplevel-command (ret) :read
-  " value\
+  " [value]\
  \n<debugger> Set return value of debugger."
   (^[args]
     (match args
+      [()
+       (print (with-module gsdbg *gsdbg-ret-val*))
+       `(,(rename 'values))]
       [(val)
        ($ with-module gsdbg
           (set! *gsdbg-ret-val*
