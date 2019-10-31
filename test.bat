@@ -1,3 +1,3 @@
 gosh test.scm
-@echo exit-code=%ERRORLEVEL%
+@echo code=%ERRORLEVEL%
 pause
