@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-11-1 v1.09
+;; 2019-11-1 v1.10
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -41,11 +41,13 @@
 ;;   ret-val    - return value of debugger
 ;;   e.g. (gsdbg "proc1" `((x ,x) (y ,y)) #f)
 (define (gsdbg :optional (prompt-add #f) (local-vars #f) (ret-val #f))
-  (set! *gsdbg-ret-val* ret-val)
-  (unless *gsdbg-disabled*
-    (%make-local-vars-table local-vars)
-    (read-eval-print-loop #f #f #f (%make-prompter prompt-add)))
-  *gsdbg-ret-val*)
+  (if *gsdbg-disabled*
+    ret-val
+    (begin
+      (set! *gsdbg-ret-val* ret-val)
+      (%make-local-vars-table local-vars)
+      (read-eval-print-loop #f #f #f (%make-prompter prompt-add))
+      *gsdbg-ret-val*)))
 
 ;; get local variable's value (limited)
 ;;   name - local variable name
