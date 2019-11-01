@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-11-1 v1.08
+;; 2019-11-1 v1.09
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -89,14 +89,15 @@
 
 ;; display local variables
 (define (%disp-local-vars syms)
-  (if (null? syms)
-    (for-each (^[var] (format #t "~s = ~s\n" (car var) (cadr var)))
-              (sort (hash-table->alist *local-vars-table*)
-                    string<? (^[var] (x->string (car var)))))
-    (dolist [sym syms]
-      (if-let1 val (hash-table-get *local-vars-table* sym #f)
-        (format #t "~s = ~s\n" sym (car val))
-        (format #t "local variable ~s is not found.\n" sym)))))
+  (when *local-vars-table*
+    (if (null? syms)
+      (for-each (^[var] (format #t "~s = ~s\n" (car var) (cadr var)))
+                (sort (hash-table->alist *local-vars-table*)
+                      string<? (^[var] (x->string (car var)))))
+      (dolist [sym syms]
+        (if-let1 val (hash-table-get *local-vars-table* sym #f)
+          (format #t "~s = ~s\n" sym (car val))
+          (format #t "local variable ~s is not found.\n" sym))))))
 
 
 ;; == gauche.interactive.toplevel ==
