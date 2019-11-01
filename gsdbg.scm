@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-10-31 v1.07
+;; 2019-11-1 v1.08
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -18,8 +18,7 @@
     gsdbg-on
     gsdbg-off
     gsdbg
-    getlv
-    ))
+    getlv))
 (select-module gsdbg)
 
 (define *gsdbg-disabled*   #f)
@@ -131,8 +130,8 @@
  \n<debugger> Quit program."
   (^[args]
     (match args
-      [(code) (exit (eval code ((with-module gauche.internal vm-current-module))))]
-      [()     (exit)]
+      [()     `(,(rename 'exit))]
+      [(code) `(,(rename 'exit) ,code)]
       [_ (usage)])))
 
 ;; ,backtrace
@@ -146,8 +145,8 @@
        `(,(rename 'values))]
       [_ (usage)])))
 
-;; ,carmod
-(define-toplevel-command (carmod cm) :read
+;; ,curmod
+(define-toplevel-command (curmod cm) :read
   "\
  \n<debugger> Display current module name."
   (^[args]
@@ -183,7 +182,7 @@
   (^[args]
     (match args
       [()
-       (print (with-module gsdbg *gsdbg-ret-val*))
+       (format #t "~s\n" (with-module gsdbg *gsdbg-ret-val*))
        `(,(rename 'values))]
       [(val)
        ($ with-module gsdbg
