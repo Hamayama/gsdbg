@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-11-1 v1.10
+;; 2019-11-3 v1.11
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -127,7 +127,7 @@
        (eof-object)]
       [_ (usage)])))
 
-;; ,quit
+;; ,quit [code]
 (define-toplevel-command (quit) :read
   " [code]\
  \n<debugger> Quit program."
@@ -178,8 +178,8 @@
        `(,(rename 'values))]
       [_ (usage)])))
 
-;; ,ret value
-(define-toplevel-command (ret) :read
+;; ,retval [value]
+(define-toplevel-command (retval rv) :read
   " [value]\
  \n<debugger> Set return value of debugger."
   (^[args]
