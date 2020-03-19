@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2020-3-20 v2.00
+;; 2020-3-20 v2.01
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -58,7 +58,7 @@
     [(_ :pa prompt-add  rest ... (%gsdbg args ...))
      (gsdbg-aux rest ... (%gsdbg args ... :pa prompt-add))]
     [(_ :lv #f          rest ... (%gsdbg args ...))
-     (gsdbg-aux rest ... (%gsdbg args ...))]
+     (gsdbg-aux rest ... (%gsdbg args ... :lv-in #f :lv-out #f))]
     [(_ :lv (sym ...)   rest ... (%gsdbg args ...))
      (gsdbg-aux rest ... (%gsdbg args ...
                                  :lv-in  `((sym ,sym) ...)
