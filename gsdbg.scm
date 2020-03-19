@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2019-11-3 v1.11
+;; 2020-3-20 v2.00
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -18,12 +18,14 @@
     gsdbg-on
     gsdbg-off
     gsdbg
-    getlv))
+    getlv
+    setlv
+    retval))
 (select-module gsdbg)
 
 (define *gsdbg-disabled*   #f)
 (define *gsdbg-ret-val*    #f)
-(define *local-vars-table* #f)
+(define *local-vars-table* (make-hash-table 'eq?))
 
 
 ;; == API ==
@@ -33,26 +35,57 @@
 (define (gsdbg-off) (set! *gsdbg-disabled* #t))
 
 ;; invoke debugger
-;;   prompt-add - additional string to prompt
-;;   local-vars - specify local variables such as '((name1 value1) ...) .
-;;                these variables can be displayed by ,locvar command.
-;;                NB: for now, debugger can't recognize local environment,
-;;                so that user should specify this argument explicitly.
-;;   ret-val    - return value of debugger
-;;   e.g. (gsdbg "proc1" `((x ,x) (y ,y)) #f)
-(define (gsdbg :optional (prompt-add #f) (local-vars #f) (ret-val #f))
+;;  keyword arguments:
+;;   :pa prompt-add - additional string to prompt
+;;   :lv local-vars - specify local variables such as :lv (name1 name2 ...) .
+;;                    these variables can be displayed by ,locvar command
+;;                    and can be accessed by getlv/setlv procedure.
+;;                    NOTE: for now, debugger can't recognize local
+;;                    environment, so that you must specify this argument
+;;                    if you want to access local variables.
+;;   :rv ret-val    - return value of debugger
+;;  example:
+;;   (gsdbg :pa "proc1" :lv (x y z) :rv 0)
+(define-syntax gsdbg
+  (syntax-rules ()
+    [(_ args ...)
+     (gsdbg-aux args ... (%gsdbg))]))
+
+(define-syntax gsdbg-aux
+  (syntax-rules (%gsdbg :pa :lv :rv)
+    [(_ (%gsdbg args ...))
+     (%gsdbg args ...)]
+    [(_ :pa prompt-add  rest ... (%gsdbg args ...))
+     (gsdbg-aux rest ... (%gsdbg args ... :pa prompt-add))]
+    [(_ :lv #f          rest ... (%gsdbg args ...))
+     (gsdbg-aux rest ... (%gsdbg args ...))]
+    [(_ :lv (sym ...)   rest ... (%gsdbg args ...))
+     (gsdbg-aux rest ... (%gsdbg args ...
+                                 :lv-in  `((sym ,sym) ...)
+                                 :lv-out (^[] (set! sym (getlv sym)) ...)))]
+    [(_ :rv ret-val     rest ... (%gsdbg args ...))
+     (gsdbg-aux rest ... (%gsdbg args ... :rv ret-val))]))
+
+(define (%gsdbg :key
+                ((:pa     prompt-add)        #f)
+                ((:lv-in  local-vars)        #f)
+                ((:lv-out update-local-vars) #f)
+                ((:rv     ret-val)           #f))
   (if *gsdbg-disabled*
     ret-val
     (begin
       (set! *gsdbg-ret-val* ret-val)
       (%make-local-vars-table local-vars)
       (read-eval-print-loop #f #f #f (%make-prompter prompt-add))
+      (when (applicable? update-local-vars) (update-local-vars))
       *gsdbg-ret-val*)))
 
 ;; get local variable's value (limited)
-;;   name - local variable name
-;;          it must be specified by local-vars argument of gsdbg procedure.
-;;   e.g. (getlv x)
+;;  argument:
+;;   name  - local variable name
+;;           it must be specified in :lv keyword argument of gsdbg.
+;;  example:
+;;   (getlv x)
 (define-syntax getlv
   (syntax-rules ()
     [(_ sym)
@@ -63,6 +96,32 @@
          (car val)
          (errorf "local variable ~s is not found." 'sym)))]))
 
+;; set local variable's value (limited)
+;;  arguments:
+;;   name  - local variable name
+;;           it must be specified in :lv keyword argument of gsdbg.
+;;   value - new local variable's value
+;;  example:
+;;   (setlv x 100)
+(define-syntax setlv
+  (syntax-rules ()
+    [(_ sym val)
+     (begin
+       (unless (symbol? 'sym)
+         (errorf "symbol required, but got ~s" 'sym))
+       (if (hash-table-get *local-vars-table* 'sym #f)
+         (begin
+           (hash-table-put! *local-vars-table* 'sym (list val))
+           val)
+         (errorf "local variable ~s is not found." 'sym)))]))
+
+;; set return value of debugger
+(define retval
+  (case-lambda
+    [()    *gsdbg-ret-val*]
+    [(val) (set! *gsdbg-ret-val* val)
+           val]))
+
 
 ;; == private ==
 
@@ -70,7 +129,7 @@
 (define (%make-prompter prompt-add)
   (^[]
     (let ([prompt      "debugger"]
-          [prompt-add1 (if prompt-add #"(~(x->string prompt-add))" "")]
+          [prompt-add1 (if prompt-add (format "(~a)" (x->string prompt-add)) "")]
           [mod         ((with-module gauche.internal vm-current-module))]
           [delim       ">"])
       (if (eq? mod (find-module 'user))
@@ -209,13 +268,14 @@
         (cons cmd help)))
     (match args
       [()
-       (print "You're in REPL (read-eval-print-loop) of Gauche shell.")
-       (print "Type a Scheme expression to evaluate.")
-       (print "Evaluate (exit) to exit REPL.")
-       (print "A word preceded with comma has special meaning.  Type ,help <cmd> ")
-       (print "to see the detailed help for <cmd>.")
-       (print "Commands can be abbreviated as far as it is not ambiguous.")
-       (print)
+       ;(print "You're in REPL (read-eval-print-loop) of Gauche shell.")
+       ;(print "Type a Scheme expression to evaluate.")
+       ;(print "Evaluate (exit) to exit REPL.")
+       ;(print "A word preceded with comma has special meaning.  Type ,help <cmd> ")
+       ;(print "to see the detailed help for <cmd>.")
+       ;(print "Commands can be abbreviated as far as it is not ambiguous.")
+       ;(print)
+       (print "Command List ( \",h <cmd>\" for details ):")
        (dolist [cmd&help
                 ;(sort (map (^p (get-cmd&help (cdr p)))
                 ;           (toplevel-command-keys))
