@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2020-3-20 v2.01
+;; 2020-3-20 v2.02
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -191,9 +191,20 @@
   " [code]\
  \n<debugger> Quit program."
   (^[args]
+    (define (confirm)
+      (format #t "Really want to quit program? [y/n]: ")
+      (flush)
+      (match (read-line)
+        [(or "y" "Y") #t]
+        [(or "n" "N") #f]
+        [_ (confirm)]))
     (match args
-      [()     `(,(rename 'exit))]
-      [(code) `(,(rename 'exit) ,code)]
+      [()     (if (confirm)
+                `(,(rename 'exit))
+                `(,(rename 'values)))]
+      [(code) (if (confirm)
+                `(,(rename 'exit) ,code)
+                `(,(rename 'values)))]
       [_ (usage)])))
 
 ;; ,backtrace
