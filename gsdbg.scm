@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2020-3-20 v2.03
+;; 2020-3-20 v2.04
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -24,6 +24,7 @@
 (select-module gsdbg)
 
 (define *gsdbg-disabled*   #f)
+(define *gsdbg-running*    #f)
 (define *gsdbg-ret-val*    #f)
 (define *local-vars-table* (make-hash-table 'eq?))
 
@@ -76,10 +77,12 @@
   (if *gsdbg-disabled*
     ret-val
     (begin
+      (set! *gsdbg-running* #t)
       (set! *gsdbg-ret-val* ret-val)
       (%make-local-vars-table local-vars)
       (read-eval-print-loop #f #f #f (%make-prompter prompt-add))
       (when (applicable? update-local-vars) (update-local-vars))
+      (set! *gsdbg-running* #f)
       *gsdbg-ret-val*)))
 
 ;; get local variable's value (limited)
@@ -121,8 +124,9 @@
 (define retval
   (case-lambda
     [()    *gsdbg-ret-val*]
-    [(val) (set! *gsdbg-ret-val* val)
-           val]))
+    [(val)
+     (set! *gsdbg-ret-val* val)
+     val]))
 
 
 ;; == private ==
@@ -174,7 +178,11 @@
  \n<debugger> Continue execution."
   (^[args]
     (match args
-      [() (eof-object)]
+      [() (if (with-module gsdbg *gsdbg-running*)
+            (eof-object)
+            (begin
+              (print "you aren't in debugger.")
+              `(,(rename 'values))))]
       [_ (usage)])))
 
 ;; ,go
@@ -183,9 +191,13 @@
  \n<debugger> Go without break."
   (^[args]
     (match args
-      [()
-       (with-module gsdbg (set! *gsdbg-disabled* #t))
-       (eof-object)]
+      [() (if (with-module gsdbg *gsdbg-running*)
+            (begin
+              (with-module gsdbg (set! *gsdbg-disabled* #t))
+              (eof-object))
+            (begin
+              (print "you aren't in debugger.")
+              `(,(rename 'values))))]
       [_ (usage)])))
 
 ;; ,quit [code]
