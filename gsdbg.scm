@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2020-3-20 v2.02
+;; 2020-3-20 v2.03
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -64,7 +64,9 @@
                                  :lv-in  `((sym ,sym) ...)
                                  :lv-out (^[] (set! sym (getlv sym)) ...)))]
     [(_ :rv ret-val     rest ... (%gsdbg args ...))
-     (gsdbg-aux rest ... (%gsdbg args ... :rv ret-val))]))
+     (gsdbg-aux rest ... (%gsdbg args ... :rv ret-val))]
+    [(_ rest ...)
+     (syntax-error "malformed gsdbg-aux:" (gsdbg-aux rest ...))]))
 
 (define (%gsdbg :key
                 ((:pa     prompt-add)        #f)
@@ -110,9 +112,9 @@
        (unless (symbol? 'sym)
          (errorf "symbol required, but got ~s" 'sym))
        (if (hash-table-get *local-vars-table* 'sym #f)
-         (begin
-           (hash-table-put! *local-vars-table* 'sym (list val))
-           val)
+         (let ((v val))
+           (hash-table-put! *local-vars-table* 'sym (list v))
+           v)
          (errorf "local variable ~s is not found." 'sym)))]))
 
 ;; set return value of debugger
