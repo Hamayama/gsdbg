@@ -1,7 +1,7 @@
 ;; -*- coding: utf-8 -*-
 ;;
 ;; gsdbg.scm
-;; 2020-3-20 v2.04
+;; 2020-3-22 v2.05
 ;;
 ;; ＜内容＞
 ;;   Gauche で、スクリプトのデバッグを行うためのモジュールです。
@@ -13,7 +13,6 @@
 (define-module gsdbg
   (use gauche.interactive)
   (use gauche.interactive.toplevel)
-  (use util.match)
   (export
     gsdbg-on
     gsdbg-off
@@ -124,9 +123,10 @@
 (define retval
   (case-lambda
     [()    *gsdbg-ret-val*]
-    [(val)
-     (set! *gsdbg-ret-val* val)
-     val]))
+    [(val) (begin
+             (set! *gsdbg-ret-val* val)
+             val)]
+    [args  (error "wrong number of arguments for retval")]))
 
 
 ;; == private ==
@@ -182,7 +182,7 @@
             (eof-object)
             (begin
               (print "you aren't in debugger.")
-              `(,(rename 'values))))]
+              *no-value*))]
       [_ (usage)])))
 
 ;; ,go
@@ -197,7 +197,7 @@
               (eof-object))
             (begin
               (print "you aren't in debugger.")
-              `(,(rename 'values))))]
+              *no-value*))]
       [_ (usage)])))
 
 ;; ,quit [code]
@@ -215,10 +215,10 @@
     (match args
       [()     (if (confirm)
                 `(,(rename 'exit))
-                `(,(rename 'values)))]
+                *no-value*)]
       [(code) (if (confirm)
                 `(,(rename 'exit) ,code)
-                `(,(rename 'values)))]
+                *no-value*)]
       [_ (usage)])))
 
 ;; ,backtrace
@@ -229,7 +229,7 @@
     (match args
       [()
        (%vm-show-stack-trace (vm-get-stack-trace-lite))
-       `(,(rename 'values))]
+       *no-value*]
       [_ (usage)])))
 
 ;; ,curmod
@@ -259,7 +259,7 @@
     (match args
       [((? symbol? syms) ...)
        (with-module gsdbg (%disp-local-vars syms))
-       `(,(rename 'values))]
+       *no-value*]
       [_ (usage)])))
 
 ;; ,retval [value]
@@ -268,14 +268,12 @@
  \n<debugger> Set return value of debugger."
   (^[args]
     (match args
-      [()
-       (format #t "~s\n" (with-module gsdbg *gsdbg-ret-val*))
-       `(,(rename 'values))]
+      [() `(,(rename 'with-module) gsdbg *gsdbg-ret-val*)]
       [(val)
        ($ with-module gsdbg
           (set! *gsdbg-ret-val*
                 (eval val ((with-module gauche.internal vm-current-module)))))
-       `(,(rename 'values))]
+       `(,(rename 'with-module) gsdbg *gsdbg-ret-val*)]
       [_ (usage)])))
 
 ;; ,help [command]
